@@ -140,7 +140,7 @@ namespace encode
 
         m_tileBatchBufferIndex = (m_tileBatchBufferIndex + 1) % m_codecHalNumTileLevelBatchBuffers;
 
-        // Setup tile data
+        // Setup tile data 
         ENCODE_CHK_STATUS_RETURN(SetTileData(params));
 
         // Setup tile report data

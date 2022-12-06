@@ -926,7 +926,6 @@ MOS_STATUS CodechalDebugInterface::DumpHucDmem(
     CodechalHucRegionDumpType dumpType)
 {
     CODECHAL_DEBUG_FUNCTION_ENTER;
-
     if (!m_configMgr->AttrIsEnabled(MediaDbgAttr::attrHuCDmem))
     {
         return MOS_STATUS_SUCCESS;

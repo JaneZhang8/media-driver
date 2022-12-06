@@ -31,7 +31,7 @@
 #include "media_debug_config_manager.h"
 #include <fstream>
 #include <sstream>
-
+#include<iostream>
 MediaDebugConfigMgr::MediaDebugConfigMgr(
     std::string outputFolderPath)
     : m_outputFolderPath(outputFolderPath)
@@ -48,6 +48,7 @@ MediaDebugConfigMgr::~MediaDebugConfigMgr()
 
 MOS_STATUS MediaDebugConfigMgr::ParseConfig(MOS_CONTEXT_HANDLE mosCtx)
 {
+    printf("MediaDebugConfigMgr::ParseConfig1\n");
     std::string               configFileName;
     MOS_USER_FEATURE_VALUE_ID configGenerateKey = __MOS_USER_FEATURE_KEY_INVALID_ID;
 
@@ -72,6 +73,7 @@ MOS_STATUS MediaDebugConfigMgr::ParseConfig(MOS_CONTEXT_HANDLE mosCtx)
         }
         return MOS_STATUS_SUCCESS;
     }
+    printf("MediaDebugConfigMgr::ParseConfig2\n");
 
     std::string line;
 
@@ -176,14 +178,18 @@ MOS_STATUS MediaDebugConfigMgr::ParseConfig(MOS_CONTEXT_HANDLE mosCtx)
         }
         else if (parseEnable)
         {
+            std::cout<<"minFrameNum"<<minFrameNum<<std::endl;
             if (minFrameNum < 0)
             {
+                                    std::cout<<"debug config mgr:"<<newline<<std::endl;
+
                 StoreDebugAttribs(newline, nullptr);
             }
             else
             {
                 for (int32_t i = minFrameNum; i <= maxFrameNum; i++)
                 {
+                    std::cout<<"debug config mgr:"<<newline<<std::endl;
                     StoreDebugAttribs(newline, &m_debugFrameConfigs.at(GetFrameConfig(i)));
                 }
             }
@@ -226,14 +232,16 @@ void MediaDebugConfigMgr::StoreDebugAttribs(std::string line, MediaDbgCfg *dbgCf
     auto        attrEndPos = line.substr(0, delimeterPos).find_last_not_of("\t ");
     std::string attrName   = line.substr(0, attrEndPos + 1);
     int32_t     attrValue  = std::stoi(line.substr(delimeterPos + 1));
-
+std::cout<<attrName<<" "<<attrValue<<std::endl;
     auto it = config->cmdAttribs.find(attrName);
     if (it != config->cmdAttribs.end())
     {
         config->cmdAttribs.erase(it);
     }
+std::cout<<"cmdAttribs "<<attrName<<" "<<attrValue<<std::endl;
 
     config->cmdAttribs[attrName] = attrValue;
+    std::cout<<attrName<<std::endl;
 }
 
 void MediaDebugConfigMgr::ParseKernelAttribs(std::string line, MediaDbgCfg *dbgCfg)

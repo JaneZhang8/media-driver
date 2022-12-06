@@ -359,6 +359,11 @@ MOS_STATUS HevcBasicFeature::UpdateTrackedBufferParameters()
         ENCODE_CHK_STATUS_RETURN(m_rsvdState->RegisterMbCodeBuffer(m_trackedBuf, m_isMbCodeRegistered, m_mbCodeSize));
     }
 #endif
+    if (m_hevcPicParams->tiles_enabled_flag && m_hevcPicParams->constrained_mv_in_tile )
+    {
+        ;
+        ENCODE_CHK_STATUS_RETURN(m_trackedBuf->RegisterMbCodeBuffer(m_trackedBuf, m_isMbCodeRegistered, m_mbCodeSize));//为什么加上这句代码速度会加快？不明白,是因为cacheable
+    }
 
     ENCODE_CHK_STATUS_RETURN(EncodeBasicFeature::UpdateTrackedBufferParameters());
 
@@ -530,7 +535,7 @@ MOS_STATUS HevcBasicFeature::GetTrackedBuffers()
     auto currRefList = m_ref.GetCurrRefList();
     m_trackedBuf->Acquire(currRefList, false);
 
-    m_resMbCodeBuffer = m_trackedBuf->GetBuffer(BufferType::mbCodedBuffer, m_trackedBuf->GetCurrIndex());
+    m_resMbCodeBuffer = m_trackedBuf->GetBuffer(BufferType::mbCodedBuffer, m_trackedBuf->GetCurrIndex());//从池子里面拿出来一块
     ENCODE_CHK_NULL_RETURN(m_resMbCodeBuffer);
 
     m_resMvTemporalBuffer = m_trackedBuf->GetBuffer(BufferType::mvTemporalBuffer, m_trackedBuf->GetCurrIndex());
@@ -561,17 +566,15 @@ MOS_STATUS HevcBasicFeature::GetRecycleBuffers()
             break;
         }
     }
+//printf("recycleBufferIdx:%d\n",recycleBufferIdx);
 
     if (recycleBufferIdx == -1 || recycleBufferIdx >= m_maxSyncDepth)
     {
         return MOS_STATUS_SUCCESS;
     }
 
-    m_resMbCodeBuffer = m_recycleBuf->GetBuffer(RecycleResId::CuRecordStreamOutBuffer, recycleBufferIdx);
-    ENCODE_CHK_NULL_RETURN(m_resMbCodeBuffer);
-
+ 
     m_recycleBufferIdxes.push_back(recycleBufferIdx);
-
     return MOS_STATUS_SUCCESS;
 }
 
@@ -820,11 +823,11 @@ MHW_SETPAR_DECL_SRC(VDENC_PIPE_BUF_ADDR_STATE, HevcBasicFeature)
         params.mmcStateRaw          = MOS_MEMCOMP_DISABLED;
         params.compressionFormatRaw = 0;
     }
-
     params.surfaceRaw               = m_rawSurfaceToPak;
     params.surfaceDsStage1          = m_8xDSSurface;
     params.surfaceDsStage2          = m_4xDSSurface;
     params.pakObjCmdStreamOutBuffer = m_resMbCodeBuffer;
+
     params.streamOutBuffer          = m_recycleBuf->GetBuffer(VdencStatsBuffer, 0);
     params.streamOutOffset          = 0;
 
@@ -877,6 +880,7 @@ MHW_SETPAR_DECL_SRC(VDENC_CMD1, HevcBasicFeature)
 
 MHW_SETPAR_DECL_SRC(VDENC_CMD2, HevcBasicFeature)
 {
+   // printf("VDENC_CMD2\n");
     params.width  = (m_hevcSeqParams->wFrameWidthInMinCbMinus1 + 1) << (m_hevcSeqParams->log2_min_coding_block_size_minus3 + 3);
     params.height = (m_hevcSeqParams->wFrameHeightInMinCbMinus1 + 1) << (m_hevcSeqParams->log2_min_coding_block_size_minus3 + 3);
 

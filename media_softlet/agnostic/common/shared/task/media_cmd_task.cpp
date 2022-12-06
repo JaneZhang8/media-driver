@@ -156,13 +156,17 @@ MOS_STATUS CmdTask::Submit(bool immediateSubmit, MediaScalability *scalability, 
 #if ((_DEBUG || _RELEASE_INTERNAL) && !EMUL)
 MOS_STATUS CmdTask::DumpCmdBuffer(PMOS_COMMAND_BUFFER cmdBuffer, CodechalDebugInterface *debugInterface, uint8_t pipeIdx)
 {
+    printf("CmdTask::DumpCmdBuffer\n");
     MEDIA_CHK_NULL_RETURN(cmdBuffer);
 
     if (debugInterface)
     {
+        printf("debug interface\n");
         std::string packetName = "";
         for (auto prop : m_packets)
         {
+                    printf("prop\n");
+
             // Construct cmd buffer dump name only from packets in pipe 0
             if (prop.stateProperty.currentPipe == 0)
             {
@@ -175,7 +179,7 @@ MOS_STATUS CmdTask::DumpCmdBuffer(PMOS_COMMAND_BUFFER cmdBuffer, CodechalDebugIn
         std::stringstream pipeIdxStrStream;
         pipeIdxStrStream << "_" << uint32_t(pipeIdx);
         packetName += pipeIdxStrStream.str();
-
+printf("before debugInterface->DumpCmdBuffer\n");
         MEDIA_CHK_STATUS_RETURN(debugInterface->DumpCmdBuffer(
             cmdBuffer,
             CODECHAL_NUM_MEDIA_STATES,

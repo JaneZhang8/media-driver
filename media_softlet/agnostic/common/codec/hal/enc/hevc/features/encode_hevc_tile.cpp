@@ -443,7 +443,10 @@ namespace encode
         uint32_t ctbSize            = 1 << (hevcSeqParams->log2_max_coding_block_size_minus3 + 3);
         uint32_t streamInWidthinLCU = MOS_ROUNDUP_DIVIDE((frameWidthInMinCb << (hevcSeqParams->log2_min_coding_block_size_minus3 + 3)), ctbSize);
         uint32_t tileStartLCUAddr   = 0;
-
+        uint32_t widthInPix       = (1 << (hevcSeqParams->log2_min_coding_block_size_minus3 + 3)) * (hevcSeqParams->wFrameWidthInMinCbMinus1 + 1);
+        uint32_t minCodingBlkSize = hevcSeqParams->log2_min_coding_block_size_minus3 + 3;
+                
+        uint32_t tileLCUStreamOutByteOffset = 0;
         ENCODE_CHK_STATUS_RETURN(CalculateNumLcuByTiles(hevcPicParams));
 
         uint64_t    activeBitstreamSize = (uint64_t)m_basicFeature->m_bitstreamSize;
@@ -518,6 +521,21 @@ namespace encode
                 uint32_t bitStreamSizePerTile = (uint32_t)(totalSizeTemp / (uint64_t)m_numLcuInPic) + ((totalSizeTemp % (uint64_t)m_numLcuInPic) ? 1 : 0);
                 bitstreamByteOffset += MOS_ALIGN_CEIL(bitStreamSizePerTile, CODECHAL_CACHELINE_SIZE) / CODECHAL_CACHELINE_SIZE;
 
+                if (idx)
+                {
+                    uint32_t NumOfCUInLCU       = (ctbSize >> 3) * (ctbSize >> 3);  // Min CU size is 8
+                    uint32_t ImgWidthInLCU      = (widthInPix + ctbSize - 1) / ctbSize;
+                    uint32_t NumLCUsCurLocation = rowBd[i] * ImgWidthInLCU + colBd[j] * tileHeightInLCU;
+                    //For PAKObject Surface
+                    tileLCUStreamOutByteOffset = 2 * BYTES_PER_DWORD * NumLCUsCurLocation * (NUM_PAK_DWS_PER_LCU + NumOfCUInLCU * NUM_DWS_PER_CU);
+                    //Add 1 CL for size info at the beginning of each tile
+                    tileLCUStreamOutByteOffset += MHW_CACHELINE_SIZE;
+
+                    //CL alignment at end of every tile
+                    tileLCUStreamOutByteOffset = MOS_ROUNDUP_DIVIDE(tileLCUStreamOutByteOffset, MHW_CACHELINE_SIZE);
+                    m_tileData[idx].tileLCUStreamOutOffset = tileLCUStreamOutByteOffset;
+
+                }
                 numLcusInTiles += numLcuInTile;
             }
 
@@ -914,25 +932,7 @@ namespace encode
             params.tileRowStoreSelect = (&m_curTileCodingParams)->TileRowStoreSelect;
             params.tileEnable         = 1;
             params.tileStreamInOffset = (&m_curTileCodingParams)->TileStreaminOffset;
-
-            // PAK Object StreamOut Offset Computation
-            uint32_t tileLCUStreamOutByteOffset = 0;
-            if ((&m_curTileCodingParams)->TileStartLCUX != 0 || (&m_curTileCodingParams)->TileStartLCUY != 0)
-            {
-                uint32_t NumOfCUInLCU       = (ctbSize >> 3) * (ctbSize >> 3);  // Min CU size is 8
-                uint32_t ImgWidthInLCU      = (widthInPix + ctbSize - 1) / ctbSize;
-                uint32_t ImgHeightInLCU     = (heightInPix + ctbSize - 1) / ctbSize;
-                uint32_t NumLCUsCurLocation = (&m_curTileCodingParams)->TileStartLCUY * ImgWidthInLCU + (&m_curTileCodingParams)->TileStartLCUX *
-                                                                                                            (((((&m_curTileCodingParams)->TileHeightInMinCbMinus1 + 1) << minCodingBlkSize) + ctbSize - 1) / ctbSize);
-                //For PAKObject Surface
-                tileLCUStreamOutByteOffset = 2 * BYTES_PER_DWORD * NumLCUsCurLocation * (NUM_PAK_DWS_PER_LCU + NumOfCUInLCU * NUM_DWS_PER_CU);
-                //Add 1 CL for size info at the beginning of each tile
-                tileLCUStreamOutByteOffset += MHW_CACHELINE_SIZE;
-                //CL alignment at end of every tile
-                tileLCUStreamOutByteOffset = MOS_ROUNDUP_DIVIDE(tileLCUStreamOutByteOffset, MHW_CACHELINE_SIZE);
-            }
-
-            params.tileLCUStreamOutOffset = tileLCUStreamOutByteOffset;
+            params.tileLCUStreamOutOffset = (&m_curTileCodingParams)->TileLCUStreamOutOffset;
         }
 
         return MOS_STATUS_SUCCESS;
